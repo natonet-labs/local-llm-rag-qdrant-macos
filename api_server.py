@@ -10,7 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from rag import build_prompt, search
 
-MAX_CHAT_HISTORY = 12
+MAX_CHAT_HISTORY = 8  # Max messages (4 turns: user/assistant pairs)
 
 app = FastAPI()
 app.add_middleware(
@@ -46,7 +46,7 @@ async def ollama_chat_stream(prompt: str) -> AsyncGenerator[str, None]:
             "repeat_penalty": 1.2,
             "top_p": 0.9,
             "top_k": 40,
-            "num_ctx": 2048,
+            "num_ctx": 4096,
         },
     }
 
