@@ -14,17 +14,17 @@ You are giving your local engine a searchable memory (Qdrant) of those PDFs and 
 ```mermaid
 graph TD
     %% Core metaphor
-    User[User<br/>&lpar;Driver&rpar;]
-    Ollama[Ollama<br/>&lpar;Car&rpar;]
-    Mistral[Mistral AI<br/>&lpar;Engine&rpar;]
-    RAG[RAG Pipeline<br/>&lpar;Fuel Injection / GPS&rpar;]
+    User["User<br/>(Driver)"]
+    Ollama["Ollama<br/>(Car)"]
+    Mistral["Mistral AI<br/>(Engine)"]
+    RAG["RAG Pipeline<br/>(Fuel Injection / GPS)"]
 
     %% Storage & fuel metaphor
-    Embeds[Embedding Model<br/>&lpar;Refinery&rpar;]
-    Qdrant[Qdrant Vector DB<br/>&lpar;Gas Tank + Fuel Lines&rpar;]
+    Embeds["Embedding Model<br/>(Refinery)"]
+    Qdrant["Qdrant Vector DB<br/>(Gas Tank + Fuel Lines)"]
 
     %% Knowledge sources
-    OER[Open Educational<br/>Resources &lpar;OER&rpar;]
+    OER["Open Educational<br/>Resources (OER)"]
     Docs[Documents & Notes]
     Ingest[Ingestion<br/>Process]
 
@@ -37,12 +37,12 @@ graph TD
     Ollama -->|Uses| Mistral
     Ollama -->|Uses| RAG
 
-    %% RAG internals &lpar;fuel system&rpar;
+    %% RAG internals (fuel system)
     RAG -->|Converts text to vectors| Embeds
     Embeds -->|Stores refined fuel| Qdrant
-    Qdrant -->|Provides relevant fuel<br/>&lpar;chunks&rpar;| RAG
+    Qdrant -->|"Provides relevant fuel<br/>(chunks)"| RAG
 
-    %% Data side &lpar;fuel creation&rpar;
+    %% Data side (fuel creation)
     OER --> Docs
     Docs --> Ingest
     Ingest -->|Clean & chunk| Docs
