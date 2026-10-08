@@ -72,8 +72,9 @@ async def chat_get(request: Request):
     """Display chat interface."""
     request.session["history"] = []  # Reset on page load
     return templates.TemplateResponse(
+        request,
         "chat.html",
-        {"request": request, "question": None, "answer": None},
+        {"question": None, "answer": None},
     )
 
 
@@ -129,6 +130,7 @@ async def chat_post(request: Request, question: str = Form(...)):
     save_history(request, history)
 
     return templates.TemplateResponse(
+        request,
         "chat.html",
-        {"request": request, "question": question, "answer": answer},
+        {"question": question, "answer": answer},
     )
