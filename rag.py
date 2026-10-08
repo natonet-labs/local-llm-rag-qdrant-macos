@@ -1,6 +1,7 @@
 # Standard library imports
 import argparse
 import os
+import time
 import uuid
 from collections import Counter
 from typing import Any, Dict, List, Optional
@@ -26,7 +27,9 @@ CHAT_MODEL = os.getenv("CHAT_MODEL", "mistral")  # fallback to "mistral" if not 
 QDRANT_HOST = os.getenv("QDRANT_HOST", "127.0.0.1")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "docs")
-MAX_CHAT_HISTORY = 12  # Max messages (6 turns: user/assistant pairs)
+MAX_CHAT_HISTORY = 8  # Max messages (4 turns: user/assistant pairs)
+MAX_TOP_K = 2  # Max relevant docs to retrieve for context
+DEBUG = True
 
 # Initialize Qdrant client
 client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
@@ -55,7 +58,11 @@ def ollama_embed(texts: List[str]) -> List[List[float]]:
 
 
 def ollama_chat(prompt: str) -> str:
-    """Generate a response using Ollama chat model."""
+    ctx = 4096
+    if CHAT_MODEL.startswith("qwen2.5:7b"):
+        ctx = 2048
+
+    start = time.time()
     payload = {
         "model": CHAT_MODEL,
         "prompt": prompt,
@@ -64,14 +71,23 @@ def ollama_chat(prompt: str) -> str:
             "temperature": 0.5,
             "repeat_penalty": 1.2,
             "top_p": 0.9,
-            "top_k": 40,
-            "num_ctx": 2048,  # Reduced from default 4096 for faster attention
+            "top_k": 40,  # (repetition > lower to 20-30; too stiff > raise to 50-60)
+            "num_ctx": ctx,
         },
     }
+
     r = httpx.post(f"{OLLAMA_BASE_URL}/api/generate", json=payload, timeout=120.0)
     r.raise_for_status()
     data = r.json()
-    return data.get("response", "")
+    answer = data.get("response", "")
+
+    elapsed = time.time() - start
+    if DEBUG:
+        print(
+            f"[DEBUG] LLM answer length={len(answer.split())} words, time={elapsed:.2f}s"
+        )
+
+    return answer
 
 
 # ============================================================================
@@ -176,13 +192,20 @@ def delete_by_source_prefix(source_prefix: str) -> int:
     deleted_count = 0
 
     while True:
-        # Scroll to find matching points
-        points, next_offset = client.scroll(
-            collection_name=QDRANT_COLLECTION,
-            limit=1000,
-            with_payload=True,
-            with_vectors=False,
-        )
+        try:
+            # Scroll to find matching points
+            points, next_offset = client.scroll(
+                collection_name=QDRANT_COLLECTION,
+                limit=1000,
+                with_payload=True,
+                with_vectors=False,
+            )
+        except Exception as e:
+            # Collection does not exist or other error → treat as nothing to delete
+            print(
+                f"Qdrant scroll error (likely no collection '{QDRANT_COLLECTION}'): {e}"
+            )
+            return 0
 
         ids_to_delete = []
         for p in points:
@@ -199,7 +222,8 @@ def delete_by_source_prefix(source_prefix: str) -> int:
             deleted_count += len(ids_to_delete)
             print(f"Deleted {len(ids_to_delete)} points for {source_prefix}")
         else:
-            break
+            if next_offset is None:
+                break
 
         if next_offset is None:
             break
@@ -212,7 +236,7 @@ def delete_by_source_prefix(source_prefix: str) -> int:
 # ============================================================================
 
 
-def search(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+def search(query: str, top_k: int = MAX_TOP_K) -> List[Dict[str, Any]]:
     """Search for relevant documents using semantic similarity."""
     query_vec = ollama_embed([query])[0]
 
@@ -348,80 +372,24 @@ def build_prompt(
     history_block = "\n".join(history_block_lines)
 
     return f"""
-SYSTEM
-You are an AI assistant who answers thoughtfully and psychologically, focusing on meaning, responsibility, and human behavior.
+SYSTEM: You are a grounded, warm, and professional psychological assistant. Focus on human behavior, meaning, and responsibility.
 
-LANGUAGE REQUIREMENT:
-You MUST respond exclusively in English. If the provided information contains text in Chinese, Farsi, Italian, Spanish, Arabic, or any other language, translate or paraphrase it into English. Never reproduce non-English text in your answer.
+CONSTRAINTS: 
+- Respond ONLY in English (translate non-English input).
+- Tone: Calm, precise, one-on-one conversational. 
+- Avoid: Lecture-style, motivational-speaker language, group addresses (folks/everyone), and dramatic adjectives (fascinating/important).
+- Style: Plain language, no rhetorical flourishes or exclamation marks.
 
-STYLE
-- calm, reflective, and precise
-- grounded and practical
-- warm but professional
-- one-on-one conversational tone
+TASK: Answer using the provided context first, then history. If unsupported, say "I may be mistaken." 
+FORMAT: 2-4 short paragraphs, 150-220 words. No intro/citations.
 
-TONE LOCK
-- Write as if speaking to one thoughtful person.
-- Do not use lecture, sermon, or motivational-speaker language.
-- Do not address the user as a group (no "my friends," "folks," "everyone," etc.).
-- Avoid dramatic or grand statements.
-- Use clear, simple language; avoid rhetorical flourishes.
+HISTORY: {history_block}
+CONTEXT: {context_blocks}
+QUESTION: {question}
 
-TASK
-Answer the user's question using the provided information and conversation.
-
-RULES
-- Follow these rules strictly.
-- Do not impersonate or claim to be any real person.
-- Use provided information as your main source.
-- You may reference books or biographical facts ONLY if they appear in provided text or conversation.
-- Do not invent details.
-- If information is missing or unsupported by provided text, say "I don't know" or "I may be mistaken."
-- Do not describe sources or retrieval process.
-- Start answers directly. No "According to...", "From...", "Based on...", citations, or meta-references.
-- Internally plan your reasoning, but output only the final answer.
-- Keep answers concise: 150-220 words unless asked for more.
-
-KNOWLEDGE ORDER
-Provided text first, then conversation history. General knowledge last (mark if uncertain).
-
-OUTPUT
-- Natural conversational answer
-- 2-4 short paragraphs
-- Stay on topic
-- No rambling
-
-CONVERSATION
-{history_block}
-
-Use this information:
-{context_blocks}
-
-{question}
-
-Remember: stay one-on-one, plain, and professional. Answer in English only.
-
-NEGATIVE CONSTRAINTS
-- Do NOT use plural audience addresses such as "my friends," "folks," "everyone," etc.
-- Do NOT use motivational, inspirational, or lecture-style phrasing.
-- Do NOT use rhetorical fillers or transitional phrases like "As I see it," "You see," "Think about," etc.
-- Do NOT use hedging, softening qualifiers, or introductory phrases that mimic speech.
-- Do NOT use dramatic, evaluative, or emotional adjectives such as "fascinating," "profound," "crucial," or "important."
-- Do NOT use exclamation marks or any punctuation that adds emphasis or excitement.
-- Do NOT invite the user to reflect, imagine, or provide personal examples.
-- Do NOT start sentences with phrases that mimic a speech or lecture.
-- Keep all sentences plain and direct; avoid rhetorical flourishes or drama.
-
-EXAMPLES
+EXAMPLES:
 Q: What is groupthink?
 A: Groupthink happens when groups prioritize agreement over accuracy.
-
-Q: How does knowledge affect behavior?
-A: Knowledge spreads through informational influence in groups.
-
-Always answer like these. No questions back.
-
-ANSWER
 """
 
 
@@ -460,7 +428,7 @@ def main():
                 if question.lower() in ["exit", "quit", "bye"]:
                     break
 
-                hits = search(question, top_k=3)
+                hits = search(question, top_k=MAX_TOP_K)
                 if not hits:
                     print("No relevant docs found.")
                     continue
@@ -479,16 +447,17 @@ def main():
         return
 
     if args.ask:
-        hits = search(args.ask, top_k=3)
+        hits = search(args.ask, top_k=MAX_TOP_K)
         if not hits:
             print("No relevant docs found.")
             return
         prompt = build_prompt(args.ask, hits)
         answer = ollama_chat(prompt)
-        print("\n--- CONTEXT DOCS ---")
-        for h in hits:
-            print(f"[score={h['score']:.3f}] {h['doc_id']}: {h['text'][:160]}...")
-        print("\n--- ANSWER ---")
+        if DEBUG:
+            print("\n--- CONTEXT DOCS ---")
+            for h in hits:
+                print(f"[score={h['score']:.3f}] {h['doc_id']}: {h['text'][:160]}...")
+            print("\n--- ANSWER ---")
         print(answer)
         return
 
