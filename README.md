@@ -207,8 +207,8 @@ curl http://127.0.0.1:6333/healthz
 ## 6. Create virtual environment and install dependencies
 
 ```bash
-mkdir -p ~/projects/local-rag-text
-cd ~/projects/local-rag-text
+mkdir -p ~/projects/local-llm-rag-qdrant-macos
+cd ~/projects/local-llm-rag-qdrant-macos
 python3.14 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -312,7 +312,7 @@ chmod +x ingest_pdf.sh
 Usage:
 
 ```bash
-cd /path/to/my/projects/local-rag-text
+cd /path/to/my/projects/local-llm-rag-qdrant-macos
 ./ingest_pdf.sh
 # It will prompt: Enter PDF filename under pdf/:
 # e.g.: Principles_of_Social_Psychology.pdf

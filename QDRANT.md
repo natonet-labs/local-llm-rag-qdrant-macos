@@ -124,7 +124,7 @@ pkill -f "target/release/qdrant"
 
 Use a single script to start/stop/restart/status/logs.
 
-Create `qdrant.sh` in your `local-rag-text` project (or wherever you prefer):
+Create `qdrant.sh` in your `local-llm-rag-qdrant-macos` project (or wherever you prefer):
 
 ```bash
 #!/usr/bin/env bash
@@ -262,12 +262,12 @@ Create `~/Library/LaunchAgents/com.localragtext.qdrant.plist`:
     <key>ProgramArguments</key>
     <array>
       <string>/bin/bash</string>
-      <string>/Users/username/projects/local-rag-text/qdrant.sh</string>
+      <string>/Users/username/projects/local-llm-rag-qdrant-macos/qdrant.sh</string>
       <string>start</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/username/projects/local-rag-text</string>
+    <string>/Users/username/projects/local-llm-rag-qdrant-macos</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -342,7 +342,7 @@ To wipe Qdrant’s data and re-ingest from scratch:
 4. Re-ingest your PDFs (from your RAG project):
 
    ```bash
-   cd ~/projects/local-rag-text
+   cd ~/projects/local-llm-rag-qdrant-macos
    source .venv/bin/activate
    ./ingest_pdf.sh --force
    ```

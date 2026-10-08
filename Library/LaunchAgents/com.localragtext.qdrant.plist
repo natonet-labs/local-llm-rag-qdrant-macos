@@ -9,12 +9,12 @@
     <key>ProgramArguments</key>
     <array>
       <string>/bin/bash</string>
-      <string>/Users/nvo/projects/local-rag-text/qdrant.sh</string>
+      <string>/Users/nvo/projects/local-llm-rag-qdrant-macos/qdrant.sh</string>
       <string>start</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/nvo/projects/local-rag-text</string>
+    <string>/Users/nvo/projects/local-llm-rag-qdrant-macos</string>
 
     <key>EnvironmentVariables</key>
     <dict>
