@@ -27,5 +27,9 @@
 
     <key>KeepAlive</key>
     <true/>
+
+    <!-- qdrant.sh starts Qdrant in the background and exits; keep launchd from killing it -->
+    <key>AbandonProcessGroup</key>
+    <true/>
   </dict>
 </plist>
