@@ -356,15 +356,26 @@ source .venv/bin/activate
 python -m uvicorn api_server:app --host 0.0.0.0 --port 8000
 ```
 
-From another machine on your LAN (substitute your Mac's IP):
+From another machine on your LAN (substitute your Mac's IP), open the chat UI in a browser:
 
-```bash
-curl -X POST "http://MAC_OS_IP:8000/rag" \
-  -H "Content-Type: application/json" \
-  -d '{"question": "How does knowledge influence behavior in groups?"}'
+```
+http://MAC_OS_IP:8000/chat
 ```
 
-You should receive a JSON response with `answer` and `contexts`.
+Or stream an answer from the command line. `/chat/stream` takes a form field and returns plain text token by token (`-N` disables curl's buffering):
+
+```bash
+curl -N -X POST "http://MAC_OS_IP:8000/chat/stream" \
+  --data-urlencode "question=How does knowledge influence behavior in groups?"
+```
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/chat` | Chat UI (resets the conversation history) |
+| `POST` | `/chat/stream` | Form field `question`; streams the answer as `text/plain` |
+| `POST` | `/chat` | Form field `question`; returns the chat page with the answer (non-streaming fallback) |
+
+Conversation history is kept in a session cookie, so pass a cookie jar (`-c cookies.txt -b cookies.txt`) to keep context across curl requests.
 
 ### 10.2 Shell script to run the API server
 
@@ -438,7 +449,7 @@ The API server will now:
 
 - Start automatically when you log into the Mac.
 - Restart if it exits unexpectedly.
-- Listen on `http://<Mac-Ip>:8000/rag` for POST requests from any device on your network.
+- Serve the chat UI at `http://<Mac-Ip>:8000/chat` to any device on your network.
 
 This turns your purpose-built, goal-aligned RAG into a small, always-on service you can reach from other devices (Windows, iPad, or iPhone), not drifting into a generic, noisy, ever-changing news feed.
 
