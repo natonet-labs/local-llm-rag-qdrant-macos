@@ -229,6 +229,12 @@ QDRANT_COLLECTION=docs
 EOF
 ```
 
+Optionally, add a key for signing the chat-session cookie. If it's unset, a random key is generated at startup and sessions reset when the server restarts:
+
+```bash
+echo "SESSION_SECRET=$(openssl rand -hex 32)" >> .env
+```
+
 ---
 
 ## 7. Core RAG script (`rag.py`)
@@ -353,10 +359,12 @@ Test it manually:
 
 ```bash
 source .venv/bin/activate
-python -m uvicorn api_server:app --host 0.0.0.0 --port 8000
+python -m uvicorn api_server:app --host 127.0.0.1 --port 8000
 ```
 
-From another machine on your LAN (substitute your Mac's IP), open the chat UI in a browser:
+That serves the chat UI on this Mac only, at `http://127.0.0.1:8000/chat`. It has no authentication, so to use it from other devices you have to opt in by listening on all interfaces: `--host 0.0.0.0` here, or `HOST=0.0.0.0` for `run_api_server.sh` and the launchd plist. Only do that on a network you trust.
+
+From another machine on your LAN (with `0.0.0.0`; substitute your Mac's IP), open the chat UI in a browser:
 
 ```
 http://MAC_OS_IP:8000/chat
@@ -398,7 +406,8 @@ chmod +x run_api_server.sh
 You can now start the server manually with:
 
 ```bash
-./run_api_server.sh
+./run_api_server.sh                 # this Mac only (127.0.0.1)
+HOST=0.0.0.0 ./run_api_server.sh    # reachable from your LAN
 ```
 
 ### 10.3 macOS launchd services (auto-start on login)

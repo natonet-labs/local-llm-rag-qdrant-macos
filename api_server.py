@@ -1,4 +1,5 @@
 import os
+import secrets
 from typing import AsyncGenerator
 
 import httpx
@@ -12,11 +13,14 @@ from rag import build_prompt, search
 
 MAX_CHAT_HISTORY = 8  # Max messages (4 turns: user/assistant pairs)
 
+# Signs the session cookie, which only holds chat history (reset on page load).
+# Without SESSION_SECRET, use a random per-process key rather than a fixed
+# string anyone reading this repo could use to forge cookies; the only cost is
+# that sessions reset when the server restarts. (.env is loaded by rag.py.)
+SESSION_SECRET = os.getenv("SESSION_SECRET") or secrets.token_urlsafe(32)
+
 app = FastAPI()
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=os.getenv("SESSION_SECRET", "session-secret-key"),
-)
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
