@@ -19,6 +19,10 @@
     <dict>
       <key>PATH</key>
       <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <!-- 127.0.0.1 = this Mac only. Use 0.0.0.0 to open the chat UI from
+           other devices on your LAN (it has no authentication). -->
+      <key>HOST</key>
+      <string>127.0.0.1</string>
     </dict>
 
     <key>RunAtLoad</key>

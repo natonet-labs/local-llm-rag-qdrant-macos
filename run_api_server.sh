@@ -26,5 +26,10 @@ fi
 # echo "[run_api_server] Ensuring requirements are installed..."
 # pip install -r requirements.txt
 
-echo "[run_api_server] Starting uvicorn on 0.0.0.0:8000..."
-exec python -m uvicorn api_server:app --host 0.0.0.0 --port 8000
+# Listen on localhost only by default: the chat UI has no authentication, so
+# 0.0.0.0 lets anyone on the network query your documents and models.
+# Set HOST=0.0.0.0 (e.g. in the launchd plist) to use it from other devices.
+HOST="${HOST:-127.0.0.1}"
+
+echo "[run_api_server] Starting uvicorn on ${HOST}:8000..."
+exec python -m uvicorn api_server:app --host "$HOST" --port 8000
